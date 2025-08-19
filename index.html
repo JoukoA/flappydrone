@@ -5,12 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Flappy Drone</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Link to a traditional terminal-style font -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
     <style>
         body {
-            font-family: 'Inter', sans-serif;
+            /* Set a black background and a neon green font */
+            background-color: #0a0a0a;
+            color: #00ff00;
+            font-family: 'VT323', monospace;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
         }
@@ -25,29 +29,35 @@
             touch-action: manipulation; /* Prevents double-tap zoom on mobile */
         }
         .message-box {
-            background: rgba(255, 255, 255, 0.9);
-            border: 2px solid #333;
-            border-radius: 1rem;
+            /* Black background with a slight transparency for the game-over screen */
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #00ff00; /* Neon green border */
+            border-radius: 0.5rem; /* Slightly less rounded corners for a square feel */
             padding: 1.5rem;
             text-align: center;
             box-shadow: 0 10px 20px rgba(0,0,0,0.2);
             backdrop-filter: blur(5px);
         }
         .btn-restart {
-            background-color: #10B981; /* Emerald green */
+            /* Transparent button with a neon green border */
+            background-color: transparent;
+            border: 2px solid #00ff00;
+            color: #00ff00;
             transition: all 0.2s ease-in-out;
             transform: translateY(0);
         }
         .btn-restart:hover {
+            /* Hover effect for the new button style */
             transform: translateY(-2px);
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-            filter: brightness(1.1);
+            box-shadow: 0 0 15px rgba(0, 255, 0, 0.5); /* Glowing effect on hover */
+            filter: brightness(1.2);
         }
     </style>
 </head>
-<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
+<body class="bg-gray-950 flex items-center justify-center min-h-screen p-4">
 
     <div class="flex flex-col items-center justify-center space-y-4 max-w-lg w-full">
+        <!-- The title was removed as requested -->
         <div id="game-container" class="relative w-full aspect-[3/4]">
             <canvas id="gameCanvas" class="w-full h-full"></canvas>
 
@@ -55,8 +65,8 @@
             <div id="messageContainer" class="absolute inset-0 flex items-center justify-center z-10">
                 <div id="messageBox" class="message-box space-y-4 hidden">
                     <h2 class="text-3xl font-bold" id="messageTitle">Game Over!</h2>
-                    <p class="text-xl font-semibold text-gray-700" id="finalScore"></p>
-                    <button id="restartButton" class="btn-restart text-white font-bold py-3 px-6 rounded-full shadow-lg">
+                    <p class="text-xl font-semibold" id="finalScore"></p>
+                    <button id="restartButton" class="btn-restart font-bold py-3 px-6 rounded-md">
                         Restart Mission
                     </button>
                 </div>
@@ -71,7 +81,7 @@
             <div id="gameUI" class="absolute inset-x-0 top-4 flex justify-between items-center px-4 z-20 hidden">
                 <div id="livesDisplay" class="flex space-x-2">
                     <div id="life1" class="w-8 h-8 flex items-center justify-center">
-                        <svg viewBox="0 0 48 16" fill="currentColor" class="w-full h-full text-gray-700">
+                        <svg viewBox="0 0 48 16" fill="currentColor" class="w-full h-full text-green-400">
                             <rect x="16" y="4" width="16" height="8" rx="2"></rect>
                             <rect x="10" y="0" width="4" height="4" rx="1"></rect>
                             <rect x="34" y="0" width="4" height="4" rx="1"></rect>
@@ -80,7 +90,7 @@
                         </svg>
                     </div>
                     <div id="life2" class="w-8 h-8 flex items-center justify-center">
-                        <svg viewBox="0 0 48 16" fill="currentColor" class="w-full h-full text-gray-700">
+                        <svg viewBox="0 0 48 16" fill="currentColor" class="w-full h-full text-green-400">
                             <rect x="16" y="4" width="16" height="8" rx="2"></rect>
                             <rect x="10" y="0" width="4" height="4" rx="1"></rect>
                             <rect x="34" y="0" width="4" height="4" rx="1"></rect>
@@ -89,7 +99,7 @@
                         </svg>
                     </div>
                     <div id="life3" class="w-8 h-8 flex items-center justify-center">
-                        <svg viewBox="0 0 48 16" fill="currentColor" class="w-full h-full text-gray-700">
+                        <svg viewBox="0 0 48 16" fill="currentColor" class="w-full h-full text-green-400">
                             <rect x="16" y="4" width="16" height="8" rx="2"></rect>
                             <rect x="10" y="0" width="4" height="4" rx="1"></rect>
                             <rect x="34" y="0" width="4" height="4" rx="1"></rect>
@@ -99,7 +109,7 @@
                     </div>
                 </div>
                 <div class="text-2xl font-extrabold text-white text-shadow-lg">
-                    Emissions measured: <span id="currentScore">0</span>
+                    Emissions Monitored: <span id="currentScore">0</span>
                 </div>
             </div>
         </div>
@@ -415,7 +425,7 @@
                 backgroundMusic.pause();
                 messageContainer.classList.remove('hidden');
                 messageTitle.textContent = "Mission Failed! Drone Down!";
-                finalScore.textContent = `Emissions measured: ${score}`;
+                finalScore.textContent = `Emissions Monitored: ${score}`;
                 messageBox.classList.remove('hidden');
             }
 
