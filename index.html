@@ -334,8 +334,13 @@
             // Handle a collision event (losing a life)
             function handleCollision() {
                 lives--;
-                hitSound.play(); // Play the hit sound
                 updateLivesDisplay();
+                // Reset the audio playback to the start before playing.
+                // This is a common workaround for issues where audio doesn't play
+                // if it's already in a "paused" or "ended" state.
+                hitSound.currentTime = 0;
+                hitSound.play();
+                
                 if (lives <= 0) {
                     gameOver();
                 } else {
