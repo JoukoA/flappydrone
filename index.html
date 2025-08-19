@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flappy Drone</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        canvas {
+            display: block;
+            background-image: url('flappydrone_background.png');
+            background-size: cover;
+            background-repeat: repeat-x;
+            background-position: 0 0;
+            border-radius: 1rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            touch-action: manipulation; /* Prevents double-tap zoom on mobile */
+        }
+        .message-box {
+            background: rgba(255, 255, 255, 0.9);
+            border: 2px solid #333;
+            border-radius: 1rem;
+            padding: 1.5rem;
+            text-align: center;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+            backdrop-filter: blur(5px);
+        }
+        .btn-restart {
+            background-color: #10B981; /* Emerald green */
+            transition: all 0.2s ease-in-out;
+            transform: translateY(0);
+        }
+        .btn-restart:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            filter: brightness(1.1);
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
+
+    <div class="flex flex-col items-center justify-center space-y-4 max-w-lg w-full">
+        <h1 class="text-4xl font-bold text-gray-800 tracking-tight">Flappy Drone</h1>
+        <div id="game-container" class="relative w-full aspect-[3/4]">
+            <canvas id="gameCanvas" class="w-full h-full"></canvas>
+
+            <!-- Game over and start message box -->
+            <div id="messageContainer" class="absolute inset-0 flex items-center justify-center z-10">
+                <div id="messageBox" class="message-box space-y-4 hidden">
+                    <h2 class="text-3xl font-bold" id="messageTitle">Game Over!</h2>
+                    <p class="text-xl font-semibold text-gray-700" id="finalScore"></p>
+                    <button id="restartButton" class="btn-restart text-white font-bold py-3 px-6 rounded-full shadow-lg">
+                        Restart Mission
+                    </button>
+                </div>
+            </div>
+
+            <!-- Start screen -->
+            <div id="startScreen" class="absolute inset-0 flex items-center justify-center z-20">
+                <img id="startImage" src="flappydrone_start.png" alt="Flappy Drone Start Screen" class="w-full h-full object-cover rounded-lg">
+            </div>
+
+            <!-- In-game score and lives display -->
+            <div id="gameUI" class="absolute inset-x-0 top-4 flex justify-between items-center px-4 z-20 hidden">
+                <div id="livesDisplay" class="flex space-x-2">
+                    <div id="life1" class="w-8 h-8 flex items-center justify-center">
+                        <svg viewBox="0 0 48 16" fill="currentColor" class="w-full h-full text-gray-700">
+                            <rect x="16" y="4" width="16" height="8" rx="2"></rect>
+                            <rect x="10" y="0" width="4" height="4" rx="1"></rect>
+                            <rect x="34" y="0" width="4" height="4" rx="1"></rect>
+                            <rect x="10" y="12" width="4" height="4" rx="1"></rect>
+                            <rect x="34" y="12" width="4" height="4" rx="1"></rect>
+                        </svg>
+                    </div>
+                    <div id="life2" class="w-8 h-8 flex items-center justify-center">
+                        <svg viewBox="0 0 48 16" fill="currentColor" class="w-full h-full text-gray-700">
+                            <rect x="16" y="4" width="16" height="8" rx="2"></rect>
+                            <rect x="10" y="0" width="4" height="4" rx="1"></rect>
+                            <rect x="34" y="0" width="4" height="4" rx="1"></rect>
+                            <rect x="10" y="12" width="4" height="4" rx="1"></rect>
+                            <rect x="34" y="12" width="4" height="4" rx="1"></rect>
+                        </svg>
+                    </div>
+                    <div id="life3" class="w-8 h-8 flex items-center justify-center">
+                        <svg viewBox="0 0 48 16" fill="currentColor" class="w-full h-full text-gray-700">
+                            <rect x="16" y="4" width="16" height="8" rx="2"></rect>
+                            <rect x="10" y="0" width="4" height="4" rx="1"></rect>
+                            <rect x="34" y="0" width="4" height="4" rx="1"></rect>
+                            <rect x="10" y="12" width="4" height="4" rx="1"></rect>
+                            <rect x="34" y="12" width="4" height="4" rx="1"></rect>
+                        </svg>
+                    </div>
+                </div>
+                <div class="text-2xl font-extrabold text-white text-shadow-lg">
+                    Methane Logged: <span id="currentScore">0</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        window.onload = function() {
+            // --- Game Variables and Constants ---
+            const canvas = document.getElementById('gameCanvas');
+            const ctx = canvas.getContext('2d');
+
+            const messageContainer = document.getElementById('messageContainer');
+            const messageBox = document.getElementById('messageBox');
+            const messageTitle = document.getElementById('messageTitle');
+            const finalScore = document.getElementById('finalScore');
+            const restartButton = document.getElementById('restartButton');
+            const livesDisplay = document.getElementById('livesDisplay');
+            const currentScoreDisplay = document.getElementById('currentScore');
+            const startScreen = document.getElementById('startScreen');
+            const gameUI = document.getElementById('gameUI');
+
+            const DRONE_WIDTH = 48; // Reduced by 20% from 60
+            const DRONE_HEIGHT = 16; // Reduced by 20% from 20
+            const DRONE_COLOR = '#4b5563'; // Gray
+            const DRONE_FLAP = -4; // Upward velocity
+            const GRAVITY = 0.2; // Downward acceleration
+            const OBSTACLE_COLOR = '#374151'; // Dark gray
+            const OBSTACLE_SPEED = 1.5;
+            const GAP_SIZE = 150; // Vertical space between top and bottom obstacles
+            const OBSTACLE_WIDTH = 50;
+            const MAX_LIVES = 3;
+
+            let drone = {};
+            let score = 0;
+            let obstacles = [];
+            let isGameOver = false;
+            let animationFrameId = null;
+            let rotorAngle = 0; // New variable for rotor rotation
+            let backgroundX = 0; // New variable for background position
+            let isGameStarted = false;
+            let lives = MAX_LIVES;
+
+            const backgroundMusic = new Audio('flappydrone_background.mp3');
+            backgroundMusic.loop = true;
+
+            // --- Game Functions ---
+
+            // Initialize or reset the game state
+            function init() {
+                // Set canvas size for responsiveness
+                canvas.width = canvas.offsetWidth;
+                canvas.height = canvas.offsetHeight;
+
+                startScreen.classList.add('hidden');
+                gameUI.classList.remove('hidden');
+
+                drone = {
+                    x: 50,
+                    y: canvas.height / 2,
+                    velocity: 0
+                };
+                score = 0;
+                lives = MAX_LIVES; // Reset lives
+                obstacles = [];
+                isGameOver = false;
+                backgroundX = 0; // Reset background position
+                messageContainer.classList.add('hidden');
+                currentScoreDisplay.textContent = '0';
+                updateLivesDisplay();
+
+                // Start the game loop
+                if (animationFrameId) {
+                    cancelAnimationFrame(animationFrameId);
+                }
+                animate();
+            }
+
+            // Update the visual display of remaining lives
+            function updateLivesDisplay() {
+                for (let i = 1; i <= MAX_LIVES; i++) {
+                    const lifeElement = document.getElementById(`life${i}`);
+                    if (lifeElement) {
+                        lifeElement.style.display = i <= lives ? 'flex' : 'none';
+                    }
+                }
+            }
+
+            // Draw the drone on the canvas
+            function drawDrone() {
+                const bodyWidth = DRONE_WIDTH * 0.7;
+                const bodyHeight = DRONE_HEIGHT * 0.8;
+                const rotorSize = 8;
+                const rotorSpeed = 0.2; // Adjust for faster/slower spin
+                const rotorSpacing = bodyWidth / 2 - 5; // Spacing for the rotors on the body
+
+                rotorAngle += rotorSpeed;
+
+                ctx.save();
+                ctx.translate(drone.x, drone.y);
+
+                // Main body
+                ctx.fillStyle = DRONE_COLOR;
+                ctx.beginPath();
+                ctx.rect(-bodyWidth / 2, -bodyHeight / 2, bodyWidth, bodyHeight);
+                ctx.fill();
+
+                // Rotors
+                function drawRotor(x, y) {
+                    ctx.save();
+                    ctx.translate(x, y);
+                    ctx.rotate(rotorAngle);
+                    ctx.fillStyle = '#1f2937';
+                    ctx.fillRect(-rotorSize, -rotorSize / 4, rotorSize * 2, rotorSize / 2);
+                    ctx.fillRect(-rotorSize / 4, -rotorSize, rotorSize / 2, rotorSize * 2);
+                    ctx.restore();
+                }
+
+                // Draw rotors on the body
+                drawRotor(-rotorSpacing, -bodyHeight / 2);
+                drawRotor(rotorSpacing, -bodyHeight / 2);
+                drawRotor(-rotorSpacing, bodyHeight / 2);
+                drawRotor(rotorSpacing, bodyHeight / 2);
+
+                ctx.restore();
+            }
+
+            // Draw a single smokestack (top or bottom)
+            function drawObstacle(x, y, width, height, isTop) {
+                ctx.fillStyle = OBSTACLE_COLOR;
+                ctx.beginPath();
+                ctx.rect(x, y, width, height);
+                ctx.fill();
+
+                // Add a gas plume effect
+                ctx.fillStyle = 'rgba(102, 255, 102, 0.4)'; // A light green for methane
+                ctx.beginPath();
+                ctx.moveTo(x + width / 2, isTop ? height : y);
+                if (isTop) {
+                    ctx.arc(x + width / 2, height, width / 2, Math.PI, 0, true);
+                } else {
+                    ctx.arc(x + width / 2, y, width / 2, 0, Math.PI, true);
+                }
+                ctx.fill();
+            }
+
+            // Generate a new pair of smokestacks
+            function generateObstacle() {
+                const minHeight = 50;
+                const maxHeight = canvas.height - GAP_SIZE - minHeight;
+                const topHeight = Math.floor(Math.random() * (maxHeight - minHeight + 1)) + minHeight;
+
+                obstacles.push({
+                    x: canvas.width,
+                    topY: 0,
+                    topHeight: topHeight,
+                    bottomY: topHeight + GAP_SIZE,
+                    bottomHeight: canvas.height - topHeight - GAP_SIZE,
+                    passed: false
+                });
+            }
+
+            // Game loop
+            function animate() {
+                if (isGameOver || !isGameStarted) {
+                    return;
+                }
+
+                // Update drone position and velocity
+                drone.velocity += GRAVITY;
+                drone.y += drone.velocity;
+
+                // Move and draw smokestacks
+                if (obstacles.length > 0) {
+                    for (let i = 0; i < obstacles.length; i++) {
+                        let obs = obstacles[i];
+                        obs.x -= OBSTACLE_SPEED;
+
+                        // Check for collision with drone
+                        if (
+                            drone.x + DRONE_WIDTH > obs.x && drone.x < obs.x + OBSTACLE_WIDTH &&
+                            (drone.y < obs.topHeight || drone.y > obs.bottomY)
+                        ) {
+                            handleCollision();
+                            return;
+                        }
+
+                        // Check if obstacle has been passed
+                        if (!obs.passed && drone.x > obs.x + OBSTACLE_WIDTH) {
+                            obs.passed = true;
+                            score++;
+                            currentScoreDisplay.textContent = score;
+                        }
+                    }
+
+                    // Remove off-screen obstacles
+                    if (obstacles[0].x + OBSTACLE_WIDTH < 0) {
+                        obstacles.shift();
+                    }
+                }
+
+                // Check for collision with ground or ceiling
+                if (drone.y + DRONE_HEIGHT / 2 > canvas.height || drone.y - DRONE_HEIGHT / 2 < 0) {
+                    handleCollision();
+                    return;
+                }
+
+                // Periodically add new obstacles
+                if (obstacles.length === 0 || canvas.width - obstacles[obstacles.length - 1].x > 200) {
+                    generateObstacle();
+                }
+
+                // Update the background position for a parallax effect
+                backgroundX -= OBSTACLE_SPEED / 2;
+                canvas.style.backgroundPosition = `${backgroundX}px 0`;
+
+                // Clear and redraw
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                drawDrone();
+                obstacles.forEach(obs => {
+                    drawObstacle(obs.x, obs.topY, OBSTACLE_WIDTH, obs.topHeight, true);
+                    drawObstacle(obs.x, obs.bottomY, OBSTACLE_WIDTH, obs.bottomHeight, false);
+                });
+
+                animationFrameId = requestAnimationFrame(animate);
+            }
+
+            // Handle a collision event (losing a life)
+            function handleCollision() {
+                lives--;
+                updateLivesDisplay();
+                if (lives <= 0) {
+                    gameOver();
+                } else {
+                    // Reset drone position and obstacles
+                    drone.y = canvas.height / 2;
+                    drone.velocity = 0;
+                    obstacles = [];
+                    // Continue the game loop from the new position
+                    animate();
+                }
+            }
+
+            // Game over state
+            function gameOver() {
+                isGameOver = true;
+                isGameStarted = false;
+                cancelAnimationFrame(animationFrameId);
+                backgroundMusic.pause();
+                messageContainer.classList.remove('hidden');
+                messageTitle.textContent = "Mission Failed! Drone Down!";
+                finalScore.textContent = `Methane Logged: ${score}`;
+                messageBox.classList.remove('hidden');
+            }
+
+            // Function to handle game start
+            function startGame() {
+                if (!isGameStarted) {
+                    isGameStarted = true;
+                    init();
+                    backgroundMusic.currentTime = 0;
+                    backgroundMusic.play();
+                }
+            }
+
+            // Event listeners
+            canvas.addEventListener('mousedown', function() {
+                if (!isGameOver && isGameStarted) {
+                    drone.velocity = DRONE_FLAP;
+                }
+            });
+
+            // Touch support for mobile devices
+            canvas.addEventListener('touchstart', function(e) {
+                e.preventDefault();
+                if (!isGameOver && isGameStarted) {
+                    drone.velocity = DRONE_FLAP;
+                }
+            });
+
+            restartButton.addEventListener('click', startGame);
+
+            // Handle start screen interaction
+            startScreen.addEventListener('click', startGame);
+
+            // Handle window resizing
+            window.addEventListener('resize', function() {
+                // Re-initialize to adjust to new canvas size
+                init();
+            });
+
+            // Initial setup for the start screen
+            // The canvas is visible to allow a click, but the game logic is paused
+            canvas.width = canvas.offsetWidth;
+            canvas.height = canvas.offsetHeight;
+        };
+    </script>
+</body>
+</html>
