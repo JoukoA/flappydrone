@@ -51,7 +51,7 @@
         <h1 class="text-4xl font-bold text-gray-800 tracking-tight">Flappy Drone</h1>
         <div id="game-container" class="relative w-full aspect-[3/4]">
             <canvas id="gameCanvas" class="w-full h-full"></canvas>
-
+            
             <!-- Game over and start message box -->
             <div id="messageContainer" class="absolute inset-0 flex items-center justify-center z-10">
                 <div id="messageBox" class="message-box space-y-4 hidden">
@@ -67,7 +67,7 @@
             <div id="startScreen" class="absolute inset-0 flex items-center justify-center z-20">
                 <img id="startImage" src="flappydrone_start.png" alt="Flappy Drone Start Screen" class="w-full h-full object-cover rounded-lg">
             </div>
-
+            
             <!-- In-game score and lives display -->
             <div id="gameUI" class="absolute inset-x-0 top-4 flex justify-between items-center px-4 z-20 hidden">
                 <div id="livesDisplay" class="flex space-x-2">
@@ -100,7 +100,7 @@
                     </div>
                 </div>
                 <div class="text-2xl font-extrabold text-white text-shadow-lg">
-                    Sources measured: <span id="currentScore">0</span>
+                    Emissions measured: <span id="currentScore">0</span>
                 </div>
             </div>
         </div>
@@ -111,7 +111,7 @@
             // --- Game Variables and Constants ---
             const canvas = document.getElementById('gameCanvas');
             const ctx = canvas.getContext('2d');
-
+            
             const messageContainer = document.getElementById('messageContainer');
             const messageBox = document.getElementById('messageBox');
             const messageTitle = document.getElementById('messageTitle');
@@ -145,6 +145,10 @@
 
             const backgroundMusic = new Audio('flappydrone_background.mp3');
             backgroundMusic.loop = true;
+            
+            // New audio for the hit sound
+            const hitSound = new Audio('drone_hit.mp3');
+            hitSound.volume = 0.3;
 
             // --- Game Functions ---
 
@@ -153,10 +157,10 @@
                 // Set canvas size for responsiveness
                 canvas.width = canvas.offsetWidth;
                 canvas.height = canvas.offsetHeight;
-
+                
                 startScreen.classList.add('hidden');
                 gameUI.classList.remove('hidden');
-
+                
                 drone = {
                     x: 50,
                     y: canvas.height / 2,
@@ -170,7 +174,7 @@
                 messageContainer.classList.add('hidden');
                 currentScoreDisplay.textContent = '0';
                 updateLivesDisplay();
-
+                
                 // Start the game loop
                 if (animationFrameId) {
                     cancelAnimationFrame(animationFrameId);
@@ -200,7 +204,7 @@
 
                 ctx.save();
                 ctx.translate(drone.x, drone.y);
-
+                
                 // Main body
                 ctx.fillStyle = DRONE_COLOR;
                 ctx.beginPath();
@@ -217,13 +221,13 @@
                     ctx.fillRect(-rotorSize / 4, -rotorSize, rotorSize / 2, rotorSize * 2);
                     ctx.restore();
                 }
-
+                
                 // Draw rotors on the body
                 drawRotor(-rotorSpacing, -bodyHeight / 2);
                 drawRotor(rotorSpacing, -bodyHeight / 2);
                 drawRotor(-rotorSpacing, bodyHeight / 2);
                 drawRotor(rotorSpacing, bodyHeight / 2);
-
+                
                 ctx.restore();
             }
 
@@ -251,7 +255,7 @@
                 const minHeight = 50;
                 const maxHeight = canvas.height - GAP_SIZE - minHeight;
                 const topHeight = Math.floor(Math.random() * (maxHeight - minHeight + 1)) + minHeight;
-
+                
                 obstacles.push({
                     x: canvas.width,
                     topY: 0,
@@ -286,7 +290,7 @@
                             handleCollision();
                             return;
                         }
-
+                        
                         // Check if obstacle has been passed
                         if (!obs.passed && drone.x > obs.x + OBSTACLE_WIDTH) {
                             obs.passed = true;
@@ -300,13 +304,13 @@
                         obstacles.shift();
                     }
                 }
-
+                
                 // Check for collision with ground or ceiling
                 if (drone.y + DRONE_HEIGHT / 2 > canvas.height || drone.y - DRONE_HEIGHT / 2 < 0) {
                     handleCollision();
                     return;
                 }
-
+                
                 // Periodically add new obstacles
                 if (obstacles.length === 0 || canvas.width - obstacles[obstacles.length - 1].x > 200) {
                     generateObstacle();
@@ -330,6 +334,7 @@
             // Handle a collision event (losing a life)
             function handleCollision() {
                 lives--;
+                hitSound.play(); // Play the hit sound
                 updateLivesDisplay();
                 if (lives <= 0) {
                     gameOver();
@@ -351,10 +356,10 @@
                 backgroundMusic.pause();
                 messageContainer.classList.remove('hidden');
                 messageTitle.textContent = "Mission Failed! Drone Down!";
-                finalScore.textContent = `Sources measured: ${score}`;
+                finalScore.textContent = `Emissions measured: ${score}`;
                 messageBox.classList.remove('hidden');
             }
-
+            
             // Function to handle game start
             function startGame() {
                 if (!isGameStarted) {
@@ -384,7 +389,7 @@
 
             // Handle start screen interaction
             startScreen.addEventListener('click', startGame);
-
+            
             // Handle window resizing
             window.addEventListener('resize', function() {
                 // Re-initialize to adjust to new canvas size
