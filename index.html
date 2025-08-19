@@ -51,7 +51,7 @@
         <h1 class="text-4xl font-bold text-gray-800 tracking-tight">Flappy Drone</h1>
         <div id="game-container" class="relative w-full aspect-[3/4]">
             <canvas id="gameCanvas" class="w-full h-full"></canvas>
-            
+
             <!-- Game over and start message box -->
             <div id="messageContainer" class="absolute inset-0 flex items-center justify-center z-10">
                 <div id="messageBox" class="message-box space-y-4 hidden">
@@ -67,7 +67,7 @@
             <div id="startScreen" class="absolute inset-0 flex items-center justify-center z-20">
                 <img id="startImage" src="flappydrone_start.png" alt="Flappy Drone Start Screen" class="w-full h-full object-cover rounded-lg">
             </div>
-            
+
             <!-- In-game score and lives display -->
             <div id="gameUI" class="absolute inset-x-0 top-4 flex justify-between items-center px-4 z-20 hidden">
                 <div id="livesDisplay" class="flex space-x-2">
@@ -111,7 +111,7 @@
             // --- Game Variables and Constants ---
             const canvas = document.getElementById('gameCanvas');
             const ctx = canvas.getContext('2d');
-            
+
             const messageContainer = document.getElementById('messageContainer');
             const messageBox = document.getElementById('messageBox');
             const messageTitle = document.getElementById('messageTitle');
@@ -122,31 +122,29 @@
             const startScreen = document.getElementById('startScreen');
             const gameUI = document.getElementById('gameUI');
 
-            const DRONE_WIDTH = 48; // Reduced by 20% from 60
-            const DRONE_HEIGHT = 16; // Reduced by 20% from 20
-            const DRONE_COLOR = '#4b5563'; // Gray
-            const DRONE_FLAP = -4; // Upward velocity
-            const GRAVITY = 0.2; // Downward acceleration
-            const OBSTACLE_COLOR = '#374151'; // Dark gray
+            const DRONE_WIDTH = 52;
+            const DRONE_HEIGHT = 18;
+            const DRONE_FLAP = -4;
+            const GRAVITY = 0.2;
             const OBSTACLE_SPEED = 1.5;
-            const GAP_SIZE = 150; // Vertical space between top and bottom obstacles
+            const GAP_SIZE = 150;
             const OBSTACLE_WIDTH = 50;
             const MAX_LIVES = 3;
 
             let drone = {};
             let score = 0;
             let obstacles = [];
+            let smokeParticles = [];
             let isGameOver = false;
             let animationFrameId = null;
-            let rotorAngle = 0; // New variable for rotor rotation
-            let backgroundX = 0; // New variable for background position
+            let backgroundX = 0;
             let isGameStarted = false;
             let lives = MAX_LIVES;
+            let frameCounter = 0;
 
             const backgroundMusic = new Audio('flappydrone_background.mp3');
             backgroundMusic.loop = true;
-            
-            // New audio for the hit sound
+
             const hitSound = new Audio('drone_hit.mp3');
             hitSound.volume = 0.3;
 
@@ -154,28 +152,28 @@
 
             // Initialize or reset the game state
             function init() {
-                // Set canvas size for responsiveness
                 canvas.width = canvas.offsetWidth;
                 canvas.height = canvas.offsetHeight;
-                
+
                 startScreen.classList.add('hidden');
                 gameUI.classList.remove('hidden');
-                
+
                 drone = {
                     x: 50,
                     y: canvas.height / 2,
-                    velocity: 0
+                    velocity: 0,
+                    rotorSpin: 0 // Keep rotor spin for the pixel drone animation
                 };
                 score = 0;
-                lives = MAX_LIVES; // Reset lives
+                lives = MAX_LIVES;
                 obstacles = [];
+                smokeParticles = [];
                 isGameOver = false;
-                backgroundX = 0; // Reset background position
+                backgroundX = 0;
                 messageContainer.classList.add('hidden');
                 currentScoreDisplay.textContent = '0';
                 updateLivesDisplay();
-                
-                // Start the game loop
+
                 if (animationFrameId) {
                     cancelAnimationFrame(animationFrameId);
                 }
@@ -192,62 +190,106 @@
                 }
             }
 
-            // Draw the drone on the canvas
+            // Draw the pixel-style drone on the canvas
             function drawDrone() {
-                const bodyWidth = DRONE_WIDTH * 0.7;
-                const bodyHeight = DRONE_HEIGHT * 0.8;
-                const rotorSize = 8;
-                const rotorSpeed = 0.2; // Adjust for faster/slower spin
-                const rotorSpacing = bodyWidth / 2 - 5; // Spacing for the rotors on the body
-
-                rotorAngle += rotorSpeed;
-
                 ctx.save();
                 ctx.translate(drone.x, drone.y);
-                
-                // Main body
-                ctx.fillStyle = DRONE_COLOR;
-                ctx.beginPath();
-                ctx.rect(-bodyWidth / 2, -bodyHeight / 2, bodyWidth, bodyHeight);
-                ctx.fill();
 
-                // Rotors
-                function drawRotor(x, y) {
+                // Draw the drone's body using pixel blocks
+                ctx.fillStyle = '#4a4a4a';
+                ctx.fillRect(-12, -6, 24, 12);
+                ctx.fillStyle = '#666666';
+                ctx.fillRect(-10, -4, 20, 8);
+                ctx.fillStyle = '#2a2a2a';
+                ctx.fillRect(-3, -2, 6, 4);
+                ctx.fillStyle = '#ff0000';
+                ctx.fillRect(-1, -1, 2, 2);
+
+                // Draw the landing gear/feet
+                ctx.fillStyle = '#333333';
+                ctx.fillRect(-8, 6, 2, 4);
+                ctx.fillRect(6, 6, 2, 4);
+
+                // Draw the arms
+                ctx.fillStyle = '#555555';
+                ctx.fillRect(-16, -8, 8, 2);
+                ctx.fillRect(8, -8, 8, 2);
+                ctx.fillRect(-16, 6, 8, 2);
+                ctx.fillRect(8, 6, 8, 2);
+
+                const rotorPositions = [
+                    {x: -12, y: -7}, {x: 12, y: -7},
+                    {x: -12, y: 7}, {x: 12, y: 7}
+                ];
+
+                // Update rotor spin for animation
+                drone.rotorSpin += 0.8;
+
+                // Draw the rotating rotors
+                rotorPositions.forEach((pos, i) => {
                     ctx.save();
-                    ctx.translate(x, y);
-                    ctx.rotate(rotorAngle);
-                    ctx.fillStyle = '#1f2937';
-                    ctx.fillRect(-rotorSize, -rotorSize / 4, rotorSize * 2, rotorSize / 2);
-                    ctx.fillRect(-rotorSize / 4, -rotorSize, rotorSize / 2, rotorSize * 2);
+                    ctx.translate(pos.x, pos.y);
+                    ctx.fillStyle = '#2a2a2a';
+                    ctx.fillRect(-2, -2, 4, 4);
+                    ctx.strokeStyle = 'rgba(85, 85, 85, 0.6)';
+                    ctx.lineWidth = 2;
+
+                    const angle = drone.rotorSpin + (i * Math.PI / 2);
+
+                    for (let j = 0; j < 4; j++) {
+                        ctx.save();
+                        ctx.rotate(angle + (j * Math.PI / 2));
+                        ctx.beginPath();
+                        ctx.moveTo(-6, 0);
+                        ctx.lineTo(6, 0);
+                        ctx.stroke();
+                        ctx.restore();
+                    }
                     ctx.restore();
-                }
-                
-                // Draw rotors on the body
-                drawRotor(-rotorSpacing, -bodyHeight / 2);
-                drawRotor(rotorSpacing, -bodyHeight / 2);
-                drawRotor(-rotorSpacing, bodyHeight / 2);
-                drawRotor(rotorSpacing, bodyHeight / 2);
-                
+                });
+
                 ctx.restore();
             }
 
             // Draw a single smokestack (top or bottom)
             function drawObstacle(x, y, width, height, isTop) {
-                ctx.fillStyle = OBSTACLE_COLOR;
+                const baseColor = '#374151';
+                const shadowColor = '#1f2937';
+                const sideShadowWidth = 8;
+                const topShadowHeight = 5;
+
+                ctx.fillStyle = baseColor;
                 ctx.beginPath();
                 ctx.rect(x, y, width, height);
                 ctx.fill();
 
-                // Add a gas plume effect
-                ctx.fillStyle = 'rgba(102, 255, 102, 0.4)'; // A light green for methane
+                ctx.fillStyle = shadowColor;
                 ctx.beginPath();
-                ctx.moveTo(x + width / 2, isTop ? height : y);
-                if (isTop) {
-                    ctx.arc(x + width / 2, height, width / 2, Math.PI, 0, true);
-                } else {
-                    ctx.arc(x + width / 2, y, width / 2, 0, Math.PI, true);
-                }
+                ctx.rect(x + width - sideShadowWidth, y, sideShadowWidth, height);
                 ctx.fill();
+
+                if (isTop) {
+                    ctx.fillStyle = baseColor;
+                    ctx.beginPath();
+                    ctx.rect(x, height - topShadowHeight, width, topShadowHeight);
+                    ctx.fill();
+                } else {
+                    ctx.fillStyle = baseColor;
+                    ctx.beginPath();
+                    ctx.rect(x, y, width, topShadowHeight);
+                    ctx.fill();
+                }
+            }
+
+            // Draw smoke particles
+            function drawSmoke() {
+                for (let i = 0; i < smokeParticles.length; i++) {
+                    const particle = smokeParticles[i];
+                    ctx.fillStyle = `rgba(80, 80, 80, ${particle.opacity})`;
+                    ctx.beginPath();
+                    ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+                    ctx.fill();
+                }
             }
 
             // Generate a new pair of smokestacks
@@ -255,7 +297,7 @@
                 const minHeight = 50;
                 const maxHeight = canvas.height - GAP_SIZE - minHeight;
                 const topHeight = Math.floor(Math.random() * (maxHeight - minHeight + 1)) + minHeight;
-                
+
                 obstacles.push({
                     x: canvas.width,
                     topY: 0,
@@ -272,17 +314,27 @@
                     return;
                 }
 
-                // Update drone position and velocity
+                frameCounter++;
+
                 drone.velocity += GRAVITY;
                 drone.y += drone.velocity;
 
-                // Move and draw smokestacks
                 if (obstacles.length > 0) {
                     for (let i = 0; i < obstacles.length; i++) {
                         let obs = obstacles[i];
                         obs.x -= OBSTACLE_SPEED;
 
-                        // Check for collision with drone
+                        if (frameCounter % 15 === 0) {
+                            smokeParticles.push({
+                                x: obs.x + OBSTACLE_WIDTH / 2,
+                                y: obs.bottomY,
+                                size: Math.random() * 5 + 3,
+                                opacity: 0.5,
+                                velocityX: -OBSTACLE_SPEED + (Math.random() - 0.5) * 0.5,
+                                velocityY: -0.5 - Math.random() * 0.5
+                            });
+                        }
+
                         if (
                             drone.x + DRONE_WIDTH > obs.x && drone.x < obs.x + OBSTACLE_WIDTH &&
                             (drone.y < obs.topHeight || drone.y > obs.bottomY)
@@ -290,8 +342,7 @@
                             handleCollision();
                             return;
                         }
-                        
-                        // Check if obstacle has been passed
+
                         if (!obs.passed && drone.x > obs.x + OBSTACLE_WIDTH) {
                             obs.passed = true;
                             score++;
@@ -299,34 +350,42 @@
                         }
                     }
 
-                    // Remove off-screen obstacles
                     if (obstacles[0].x + OBSTACLE_WIDTH < 0) {
                         obstacles.shift();
                     }
                 }
-                
-                // Check for collision with ground or ceiling
+
+                for (let i = smokeParticles.length - 1; i >= 0; i--) {
+                    const particle = smokeParticles[i];
+                    particle.x += particle.velocityX;
+                    particle.y += particle.velocityY;
+                    particle.opacity -= 0.01;
+                    particle.size += 0.2;
+
+                    if (particle.opacity <= 0) {
+                        smokeParticles.splice(i, 1);
+                    }
+                }
+
                 if (drone.y + DRONE_HEIGHT / 2 > canvas.height || drone.y - DRONE_HEIGHT / 2 < 0) {
                     handleCollision();
                     return;
                 }
-                
-                // Periodically add new obstacles
+
                 if (obstacles.length === 0 || canvas.width - obstacles[obstacles.length - 1].x > 200) {
                     generateObstacle();
                 }
 
-                // Update the background position for a parallax effect
                 backgroundX -= OBSTACLE_SPEED / 2;
                 canvas.style.backgroundPosition = `${backgroundX}px 0`;
 
-                // Clear and redraw
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
-                drawDrone();
+                drawSmoke();
                 obstacles.forEach(obs => {
                     drawObstacle(obs.x, obs.topY, OBSTACLE_WIDTH, obs.topHeight, true);
                     drawObstacle(obs.x, obs.bottomY, OBSTACLE_WIDTH, obs.bottomHeight, false);
                 });
+                drawDrone();
 
                 animationFrameId = requestAnimationFrame(animate);
             }
@@ -334,16 +393,17 @@
             // Handle a collision event (losing a life)
             function handleCollision() {
                 lives--;
-                hitSound.play(); // Play the hit sound
                 updateLivesDisplay();
+
+                hitSound.currentTime = 0;
+                hitSound.play();
+
                 if (lives <= 0) {
                     gameOver();
                 } else {
-                    // Reset drone position and obstacles
                     drone.y = canvas.height / 2;
                     drone.velocity = 0;
                     obstacles = [];
-                    // Continue the game loop from the new position
                     animate();
                 }
             }
@@ -359,7 +419,7 @@
                 finalScore.textContent = `Emissions measured: ${score}`;
                 messageBox.classList.remove('hidden');
             }
-            
+
             // Function to handle game start
             function startGame() {
                 if (!isGameStarted) {
@@ -389,15 +449,12 @@
 
             // Handle start screen interaction
             startScreen.addEventListener('click', startGame);
-            
+
             // Handle window resizing
             window.addEventListener('resize', function() {
-                // Re-initialize to adjust to new canvas size
                 init();
             });
 
-            // Initial setup for the start screen
-            // The canvas is visible to allow a click, but the game logic is paused
             canvas.width = canvas.offsetWidth;
             canvas.height = canvas.offsetHeight;
         };
